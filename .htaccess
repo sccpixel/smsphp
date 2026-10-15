@@ -1,0 +1,3 @@
+# Bloqueia o acesso ao projeto pela porta 80 do htdocs.
+# So a porta 8080 (DocumentRoot em public/) serve a API.
+Require all denied
