@@ -60,4 +60,15 @@ return [
     'sms' => [
         'max_text_length' => (int) $env('MAX_TEXT_LENGTH', 255),
     ],
+
+    // Dispatcher: sms_queue -> sms_out
+    'dispatcher' => [
+        'interval_seconds' => max(1, (int) $env('DISPATCH_INTERVAL_SECONDS', 5)),
+        'batch_size'       => max(1, (int) $env('DISPATCH_BATCH_SIZE', 10)),
+    ],
+
+    // Comum a todos os workers
+    'worker' => [
+        'max_consecutive_errors' => max(1, (int) $env('WORKER_MAX_CONSECUTIVE_ERRORS', 10)),
+    ],
 ];
