@@ -5,6 +5,9 @@
 declare(strict_types=1);
 
 use App\Action\HealthAction;
+use App\Action\Approval\CancelApprovalAction;
+use App\Action\Approval\CreateApprovalAction;
+use App\Action\Approval\GetApprovalAction;
 use App\Action\ApprovalType\ListApprovalTypesAction;
 use App\Action\Manager\ListManagersAction;
 use App\Action\Message\CreateMessageAction;
@@ -27,6 +30,8 @@ return function (App $app): void {
         $api->get('/managers', ListManagersAction::class);
         $api->get('/approval-types', ListApprovalTypesAction::class);
 
-        // Fase 6: /api/approvals
+        $api->post('/approvals', CreateApprovalAction::class);
+        $api->get('/approvals/{id:[0-9]+}', GetApprovalAction::class);
+        $api->post('/approvals/{id:[0-9]+}/cancel', CancelApprovalAction::class);
     })->add(ApiAuthMiddleware::class);
 };

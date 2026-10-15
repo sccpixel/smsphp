@@ -13,6 +13,22 @@ final class ApprovalTypeRepository
     }
 
     /**
+     * Tipo ativo com este código ('discount', 'stock_move', ...).
+     *
+     * @return array{id:int,code:string,label:string}|null
+     */
+    public function findActiveByCode(string $code): ?array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT id, code, label FROM approval_types WHERE code = :code AND active = 1'
+        );
+        $stmt->execute(['code' => $code]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : ['id' => (int) $row['id'], 'code' => $row['code'], 'label' => $row['label']];
+    }
+
+    /**
      * Tipos de pedido ativos.
      *
      * @return list<array{code:string,label:string}>

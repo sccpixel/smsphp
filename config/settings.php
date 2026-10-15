@@ -67,6 +67,14 @@ return [
         'batch_size'       => max(1, (int) $env('DISPATCH_BATCH_SIZE', 10)),
     ],
 
+    // Pedidos de aprovação
+    'approvals' => [
+        'expiry_minutes' => max(0, (int) $env('APPROVAL_EXPIRY_MINUTES', 10)),
+        'poll_seconds'   => max(1, (int) $env('APPROVAL_POLL_SECONDS', 3)),
+        'send_feedback'  => $bool('APPROVAL_SEND_FEEDBACK', true),
+        'inbox_batch'    => max(1, (int) $env('APPROVAL_INBOX_BATCH', 50)),
+    ],
+
     // Comum a todos os workers
     'worker' => [
         'max_consecutive_errors' => max(1, (int) $env('WORKER_MAX_CONSECUTIVE_ERRORS', 10)),
