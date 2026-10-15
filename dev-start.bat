@@ -2,7 +2,7 @@
 rem ====================================================================
 rem  Arranca TUDO o que e preciso para testar a API sem modem:
 rem    1. prepara a base de testes (smsphp_test) com dados de exemplo
-rem    2. abre 2 janelas: dispatcher e worker de aprovacoes
+rem    2. abre 3 janelas: dispatcher, aprovacoes e callbacks
 rem  A API e o Apache do XAMPP (porta 8080): tem de estar ligado no XAMPP Control Panel.
 rem  O .env tem de ter DB_NAME=smsphp_test e API_KEYS (ver .env.example).
 rem
@@ -52,6 +52,7 @@ echo.
 echo === 3/3 A arrancar dispatcher e aprovacoes ===
 start "sms-dispatcher" cmd /k ""%PHP%" -d variables_order=EGPCS bin\dispatcher.php"
 start "sms-approvals" cmd /k ""%PHP%" -d variables_order=EGPCS bin\approvals.php"
+start "sms-callbacks" cmd /k ""%PHP%" -d variables_order=EGPCS bin\callbacks.php"
 
 ping -n 4 127.0.0.1 >nul
 echo.

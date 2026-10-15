@@ -11,7 +11,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-for %%S in (sms-dispatcher sms-approvals) do (
+for %%S in (sms-dispatcher sms-approvals sms-callbacks) do (
     "%NSSM%" status %%S >nul 2>&1
     if not errorlevel 1 (
         echo A remover %%S...

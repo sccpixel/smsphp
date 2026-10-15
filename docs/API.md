@@ -197,8 +197,8 @@ POST /api/approvals
 | `description` | texto | sim | 1 a 120 caracteres; é o que o gestor lê no SMS |
 | `reference` | texto | não | até 100 caracteres; o identificador do pedido na vossa APP (ex.: `VENDA-1234`) |
 | `requested_by` | texto | não | até 100 caracteres; quem pediu (ex.: o operador) |
-| `manager_id` | inteiro | não | gestor que decide (ver [gestores](#gestores)). Se faltar, usa o gestor por defeito |
-| `callback_url` | URL | não | até 255 caracteres. **Guardado, mas ainda não usado**: por agora a APP tem de consultar (ver abaixo) |
+| `manager_id` | inteiro | **sim** | id do gestor que decide, obtido em [GET /api/managers](#gestores). Tem de existir e estar ativo. **Não há gestor por defeito**: a API serve várias aplicações e cada pedido diz sempre a quem vai |
+| `callback_url` | URL | não | até 255 caracteres. Endereço da APP que o gateway avisa (`POST`) quando o pedido é aprovado, rejeitado ou expira. Tem de ser `https://` e **público** (ver [Avisos automáticos](#avisos-automáticos-callback)) |
 
 ```json
 {
@@ -246,7 +246,8 @@ GET /api/approvals/{id}
   "expires_at": "2026-10-15T10:10:00",
   "responded_at": "2026-10-15T10:02:31",
   "response_text": "SIM 4821",
-  "sms_status": "sent"
+  "sms_status": "sent",
+  "callback_status": "sent"
 }
 ```
 
@@ -255,6 +256,7 @@ GET /api/approvals/{id}
 | `status` | Ver tabela de estados. Se o prazo já passou e ninguém respondeu, vem logo `expired` |
 | `responded_at`, `response_text` | Quando e o que o gestor respondeu (`null` se ainda não respondeu) |
 | `sms_status` | Estado do **SMS enviado ao gestor**: `pending` — ainda não saiu · `sent` — enviado · `failed` — **nunca chegou ao gestor** |
+| `callback_status` | Estado do **aviso à tua APP**: `none` — o pedido não tem `callback_url` (ou ainda não foi decidido) · `pending` — à espera de ser enviado ou de nova tentativa · `sent` — a APP respondeu 2xx · `failed` — o gateway desistiu (a APP continua a poder consultar o pedido) |
 
 **Importante:** se `sms_status` for `failed`, o gestor nunca viu o pedido. O `status` continua
 `pending` até expirar, por isso a APP deve tratar este caso (avisar o operador, cancelar e
@@ -264,8 +266,108 @@ Dá `404` se o `id` não existir.
 
 ### Saber o resultado
 
-A APP **consulta** `GET /api/approvals/{id}` de **3 em 3 segundos** (não menos), até o `status`
-deixar de ser `pending`, ou até o utilizador desistir.
+Há duas formas, que podem ser usadas em conjunto:
+
+1. **Consultar**: a APP chama `GET /api/approvals/{id}` de **3 em 3 segundos** (não menos), até o `status`
+   deixar de ser `pending`, ou até o utilizador desistir. Funciona sempre, em qualquer APP.
+2. **Ser avisada** (callback): se o pedido tiver `callback_url`, o gateway chama esse endereço assim que o
+   pedido é decidido. Evita consultas constantes. Ver a secção seguinte.
+
+### Avisos automáticos (callback)
+
+Ao criar o pedido, indica o `callback_url` (`https://`, público). Quando o pedido passa a **`approved`**,
+**`rejected`** ou **`expired`**, o gateway faz um `POST` a esse endereço. Um cancelamento **não** gera
+aviso (foi a própria APP que o pediu).
+
+**O que a APP recebe**
+
+```
+POST /o/teu/endereco
+Content-Type: application/json; charset=utf-8
+X-Gateway-Event: approval.updated
+X-Gateway-Delivery: 7-1
+X-Gateway-Timestamp: 1760000000
+X-Gateway-Signature: sha256=3a9f...
+```
+
+```json
+{
+  "event": "approval.updated",
+  "id": 7,
+  "code": "4821",
+  "type": "discount",
+  "type_label": "Desconto",
+  "description": "15% na venda 1234, cliente Silva",
+  "reference": "VENDA-1234",
+  "requested_by": "Operador Ana",
+  "manager": { "id": 1, "name": "João" },
+  "status": "approved",
+  "created_at": "2026-10-15T10:00:00",
+  "expires_at": "2026-10-15T10:10:00",
+  "responded_at": "2026-10-15T10:02:31",
+  "response_text": "SIM 4821",
+  "sms_status": "sent"
+}
+```
+
+O corpo é o mesmo de `GET /api/approvals/{id}`, mais o campo `event`. Usa o `reference` para saber a que
+operação da tua APP o pedido corresponde.
+
+**O que a APP tem de fazer**
+
+- **Responder com HTTP 2xx** (por exemplo `200`), em menos de **5 segundos**. Qualquer outra resposta, ou
+  falta de resposta, conta como falha. Os redirecionamentos (`301`, `302`...) **não** são seguidos.
+- **Verificar a assinatura** antes de confiar no conteúdo (qualquer pessoa pode fazer um `POST` ao teu
+  endereço). A assinatura é um HMAC-SHA256 de `<timestamp>.<corpo>` com **a chave de API da tua APP** como
+  segredo. Usa sempre o corpo **em bruto**, tal como chegou, antes de o converter em JSON. Exemplos abaixo.
+- **Tratar avisos repetidos**: o gateway garante a entrega "pelo menos uma vez". Se a APP responder tarde e o gateway
+  repetir, o mesmo aviso chega duas vezes. Faz o tratamento de forma que receber o mesmo `status` outra vez não
+  estrague nada (o `X-Gateway-Delivery` identifica cada tentativa: `<id do pedido>-<n.º da tentativa>`).
+
+**Exemplo de verificação (PHP)**
+
+```php
+$body      = file_get_contents('php://input');                    // o corpo EXATAMENTE como chegou
+$timestamp = $_SERVER['HTTP_X_GATEWAY_TIMESTAMP'] ?? '';
+$received  = $_SERVER['HTTP_X_GATEWAY_SIGNATURE'] ?? '';
+$expected  = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $suaChaveDeApi);
+
+if (!hash_equals($expected, $received) || abs(time() - (int) $timestamp) > 300) {
+    http_response_code(401);   // assinatura errada, ou aviso com mais de 5 minutos
+    exit;
+}
+$pedido = json_decode($body, true);
+// ... atualiza a operação com $pedido['reference'] e $pedido['status'] ...
+http_response_code(200);
+```
+
+**Exemplo de verificação (Node.js)**
+
+```js
+const crypto = require('crypto');
+
+function assinaturaValida(corpoBruto, timestamp, recebida, chave) {
+  const esperada = 'sha256=' + crypto.createHmac('sha256', chave).update(timestamp + '.' + corpoBruto).digest('hex');
+  const a = Buffer.from(esperada), b = Buffer.from(recebida || '');
+  const fresco = Math.abs(Date.now() / 1000 - Number(timestamp)) <= 300;   // até 5 minutos
+  return fresco && a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+```
+
+**Se a APP falhar:** o gateway repete 6 vezes, com esperas de 1, 2, 5, 10, 20 e 30 minutos (7 tentativas em cerca de
+1 hora). Se mesmo assim não conseguir, desiste (`callback_status: "failed"`) e a APP continua a poder consultar o pedido
+com `GET`. Por isso, **não dependas só do callback** para pedidos importantes: confirma com um `GET` se passou muito tempo.
+
+**Regras para o endereço** (recusadas com `422` ao criar o pedido):
+
+- tem de começar por `https://`;
+- tem de ser **público**: não pode ser `localhost`, um IP privado (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`) nem um
+  nome interno (sem ponto, `.local`, `.lan`);
+- não pode ter utilizador e password no endereço (`https://user:pass@...`);
+- até 255 caracteres.
+
+Se a tua APP está na rede interna da empresa e não tem um endereço público, o callback não a alcança: fala com o
+administrador (existe uma opção para aceitar redes internas) ou usa só a consulta (`GET`).
 
 ### Cancelar um pedido
 
@@ -312,9 +414,10 @@ GET /api/managers
 ]
 ```
 
-Só os ativos. **Não devolve o número de telefone.** `is_default` indica quem decide quando o
-pedido não traz `manager_id`. Se não houver gestor por defeito e a APP não indicar `manager_id`,
-o pedido é rejeitado com `422`.
+Só os ativos. **Não devolve o número de telefone.**
+
+Cada pedido de aprovação tem de indicar o `manager_id` de um destes gestores (é obrigatório).
+O campo `is_default` existe só por compatibilidade e **não tem efeito nos pedidos**: ignora-o.
 
 ### Tipos de pedido
 
@@ -363,10 +466,11 @@ Todos os erros têm o mesmo formato:
 | `Máximo N caracteres` | texto demasiado longo |
 | `Tem de ser texto` / `Tem de ser um número inteiro` | tipo errado |
 | `Número de telefone inválido` | `to` não é um número português válido |
-| `URL inválido` | `callback_url` não é `http(s)://...` |
+| `URL inválido` | `callback_url` não é um URL |
+| `O endereço do callback tem de começar por https://.` | `callback_url` sem `https` |
+| `O endereço do callback tem de ser público (...)` | `callback_url` aponta para `localhost` ou uma rede interna |
 | `Tipo de pedido inexistente ou inativo` | `type` desconhecido |
 | `Gestor inexistente ou inativo` | `manager_id` não existe ou está inativo |
-| `Não há gestor por defeito: indique o manager_id` | falta `manager_id` e não há gestor por defeito |
 
 Um `5xx` é um problema do servidor, não do pedido: tenta mais tarde e, se persistir, avisa o administrador.
 
@@ -385,7 +489,7 @@ curl.exe -H "X-API-Key: <chave>" https://<dominio>/api/messages/15
 
 curl.exe -X POST https://<dominio>/api/approvals ^
   -H "X-API-Key: <chave>" -H "Content-Type: application/json" ^
-  -d "{\"type\":\"discount\",\"description\":\"15%% na venda 1234\",\"reference\":\"VENDA-1234\"}"
+  -d "{\"type\":\"discount\",\"description\":\"15%% na venda 1234\",\"reference\":\"VENDA-1234\",\"manager_id\":1}"
 ```
 
 > No `cmd`, o `%` escreve-se `%%` quando está dentro de um ficheiro `.bat`; na linha de comandos escreve-se `%`.
@@ -423,6 +527,7 @@ $r = api('POST', '/api/approvals', [
     'type'        => 'discount',
     'description' => '15% na venda 1234, cliente Silva',
     'reference'   => 'VENDA-1234',
+    'manager_id'  => 1,          // obrigatório: o gestor que decide (de GET /api/managers)
 ]);
 if ($r['status'] !== 201) {
     exit('Erro: ' . json_encode($r['data']));

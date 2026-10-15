@@ -5,6 +5,7 @@ namespace App\Domain\Approval;
 
 use App\Database\Connection;
 use App\Domain\ApprovalType\ApprovalTypeRepository;
+use App\Domain\Callback\CallbackUrlPolicy;
 use App\Domain\Manager\ManagerRepository;
 use App\Domain\Sms\QueueStatus;
 use App\Domain\Sms\SmsQueueRepository;
@@ -36,6 +37,7 @@ final class ApprovalService
         private readonly Clock $clock,
         private readonly Settings $settings,
         private readonly ReplyParser $parser,
+        private readonly CallbackUrlPolicy $callbackPolicy,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -55,6 +57,15 @@ final class ApprovalService
         $v->string('requested_by', 0, 100);
         $v->string('callback_url', 0, 255);
         $v->url('callback_url');
+        // O gateway vai fazer pedidos a este endereço: só aceita os permitidos (https e públicos, por defeito)
+        if (is_string($data['callback_url'] ?? null) && trim($data['callback_url']) !== '' && !isset($v->errors()['callback_url'])) {
+            if (($error = $this->callbackPolicy->checkFormat(trim($data['callback_url']))) !== null) {
+                $v->fail('callback_url', $error);
+            }
+        }
+        // O gestor é sempre indicado pela APP: a API serve várias aplicações independentes,
+        // por isso não há "gestor por defeito" a que um pedido possa ir parar sem querer.
+        $v->required('manager_id');
         $v->int('manager_id');
 
         // Só procura na BD se o formato estiver certo
@@ -66,17 +77,9 @@ final class ApprovalService
                 $v->fail('type', 'Tipo de pedido inexistente ou inativo');
             }
 
-            $managerId = $data['manager_id'] ?? null;
-            if ($managerId === null || $managerId === '') {
-                $manager = $this->managers->findDefault();
-                if ($manager === null) {
-                    $v->fail('manager_id', 'Não há gestor por defeito: indique o manager_id');
-                }
-            } else {
-                $manager = $this->managers->findActive((int) $managerId);
-                if ($manager === null) {
-                    $v->fail('manager_id', 'Gestor inexistente ou inativo');
-                }
+            $manager = $this->managers->findActive((int) $data['manager_id']);
+            if ($manager === null) {
+                $v->fail('manager_id', 'Gestor inexistente ou inativo');
             }
         }
         $v->throwIfFailed();
@@ -150,6 +153,7 @@ final class ApprovalService
             'responded_at' => $this->iso($row['responded_at']),
             'response_text' => $row['response_text'],
             'sms_status'   => $this->smsStatus($row),
+            'callback_status' => $row['callback_status'],
         ];
     }
 

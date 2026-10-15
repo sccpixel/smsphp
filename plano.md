@@ -181,7 +181,12 @@ CREATE TABLE IF NOT EXISTS approval_requests (
     reference         VARCHAR(100) NULL,                 -- id interno na APP
     requested_by      VARCHAR(100) NULL,                 -- operador que pediu
     status            VARCHAR(20)  NOT NULL DEFAULT 'pending',
-    callback_url      VARCHAR(255) NULL,                 -- guardado, ainda não usado (futuro)
+    callback_url      VARCHAR(255) NULL,                 -- a APP é avisada aqui quando o pedido é decidido (ver 8.3)
+    callback_status   VARCHAR(10)  NOT NULL DEFAULT 'none',  -- none | pending | sent | failed
+    callback_attempts INT          NOT NULL DEFAULT 0,
+    callback_next_at  DATETIME     NULL,
+    callback_sent_at  DATETIME     NULL,
+    callback_error    VARCHAR(255) NULL,
     created_at        DATETIME     NOT NULL,
     expires_at        DATETIME     NOT NULL,
     responded_at      DATETIME     NULL,
@@ -381,7 +386,7 @@ Todas as rotas `/api/*` passam pelo `ApiAuthMiddleware`.
 - `type`: obrigatório; tem de existir em `approval_types` e estar ativo → senão 422.
 - `description`: obrigatória, entre 1 e 120 caracteres.
 - `reference` (≤100), `requested_by` (≤100), `callback_url` (≤255, URL válida): opcionais.
-- `manager_id`: opcional. Se faltar, usa o gestor `is_default = 1`. Se não houver gestor por defeito, ou se o gestor não existir ou estiver inativo → 422.
+- `manager_id`: **obrigatório** (a API serve várias apps independentes, por isso não há gestor por defeito). Tem de ser um inteiro; se faltar, ou se o gestor não existir ou estiver inativo → 422.
 - Numa **transação**:
     1. gerar o código (ver abaixo);
     2. inserir em `approval_requests` com `created_at = now` e `expires_at = now + APPROVAL_EXPIRY_MINUTES`;
@@ -424,7 +429,7 @@ Se estiver `pending` mas `expires_at <= now`, devolver `expired` (o worker persi
 
 **`POST /api/approvals/{id}/cancel`** → 200 com o pedido atualizado; 404 se não existir; **409** se já não estiver `pending`.
 
-A APP sabe o resultado **consultando o `GET`** de poucos em poucos segundos. O `callback_url` fica guardado para uma fase futura.
+A APP sabe o resultado **consultando o `GET`** de poucos em poucos segundos, ou sendo avisada pelo **callback** (ver 8.3) se indicou um `callback_url`.
 
 ---
 
@@ -476,6 +481,17 @@ A cada `APPROVAL_POLL_SECONDS`:
     - não existe → `Pedido 4821 nao encontrado.`
 4. Aplicar = `UPDATE ... SET status = approved|rejected, responded_at = :now, response_text = <texto, máx. 255>, response_sms_id = <id sms_in> WHERE id = ? AND status = 'pending'`. Depois responder `Pedido 4821 aprovado.` ou `Pedido 4821 rejeitado.`
 5. As respostas ao gestor só são enviadas se `APPROVAL_SEND_FEEDBACK=true`. São inseridas em `sms_queue`, para o número **guardado em `managers.phone_number`**, com `api_client = 'approvals'`.
+
+### 8.3 Callbacks (`bin/callbacks.php`)
+
+Se o pedido tem `callback_url`, o gateway avisa a APP (POST) quando ele é decidido. É um worker **à parte** (`sms-callbacks`), para uma APP lenta nunca atrasar a leitura das respostas dos gestores.
+
+- **Quando**: `approved`, `rejected` e `expired`. O cancelamento não gera aviso (foi a APP que o pediu). O `respond()` e o `expireOverdue()` marcam `callback_status = 'pending'` na mesma instrução que muda o estado (se houver `callback_url`).
+- **Ciclo** (`CALLBACK_INTERVAL_SECONDS`): `findDueCallbacks` (`callback_status = 'pending' AND callback_next_at <= :now`) → envia → `sent`, ou agenda nova tentativa, ou `failed`.
+- **Pedido**: `POST` JSON (o mesmo corpo do `GET /api/approvals/{id}` mais `event`, sem `callback_status`). Cabeçalhos `X-Gateway-Event`, `X-Gateway-Delivery` (`<id>-<tentativa>`), `X-Gateway-Timestamp` e `X-Gateway-Signature: sha256=<HMAC-SHA256 de "<timestamp>.<corpo>" com a chave de API da APP>`. Sem chave (modo de testes sem autenticação), não há assinatura.
+- **Sucesso** = resposta 2xx. Qualquer outra coisa (4xx, 5xx, 3xx, timeout, ligação recusada) é falha. **Não segue redirecionamentos.** Timeout `CALLBACK_TIMEOUT_SECONDS` (5).
+- **Tentativas**: a 1.ª é logo; depois uma por cada valor de `CALLBACK_RETRY_MINUTES` (por defeito 1, 2, 5, 10, 20, 30 = 7 tentativas em cerca de 1 hora). Depois disso `failed`. Entrega "pelo menos uma vez": a APP tem de tratar avisos repetidos.
+- **Segurança (SSRF)**: por defeito (`CALLBACK_ALLOW_INTERNAL=false`) só `https` e endereços **públicos**; recusa `localhost`, redes privadas, link-local (169.254.x.x) e CGNAT. Valida-se ao criar o pedido (422) e **outra vez no envio**, resolvendo o DNS e ligando ao IP verificado (contra *DNS rebinding*). Um destino proibido falha logo, sem repetir; um DNS que não resolve repete. Sem utilizador e password no URL.
 
 ---
 
@@ -550,7 +566,7 @@ curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 e
 
 **Aceitação**
 
-- `POST /api/approvals` sem `manager_id` → 201, usa o gestor por defeito; código com 4 dígitos; SMS em `sms_queue` com o texto do formato 7.3.
+- `POST /api/approvals` com `manager_id` → 201; código com 4 dígitos; SMS em `sms_queue` para o telefone desse gestor, com o texto do formato 7.3. **Sem** `manager_id` → 422.
 - Tipo inexistente / gestor inativo / descrição com 121 caracteres → 422.
 - Descrição com acentos ("João, açúcar") → o SMS em `sms_queue` sai sem acentos.
 - `GET /api/approvals/{id}` → `pending`, com `sms_status`; com `APPROVAL_EXPIRY_MINUTES=0` → `expired`; se o SMS ficar `failed` → `sms_status: "failed"`.

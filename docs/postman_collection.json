@@ -70,13 +70,13 @@
       "name": "Aprovações",
       "item": [
         {
-          "name": "Criar pedido (gestor por defeito)",
+          "name": "Criar pedido (gestor 1)",
           "event": [{ "listen": "test", "script": { "exec": ["const j = pm.response.json(); if (j.id) pm.collectionVariables.set('approval_id', j.id);"] } }],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{base_url}}/api/approvals",
-            "body": { "mode": "raw", "raw": "{\n  \"type\": \"discount\",\n  \"description\": \"15% na venda 1234, cliente João Silva\",\n  \"reference\": \"VENDA-1234\",\n  \"requested_by\": \"Operador Ana\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"discount\",\n  \"description\": \"15% na venda 1234, cliente João Silva\",\n  \"reference\": \"VENDA-1234\",\n  \"requested_by\": \"Operador Ana\",\n  \"manager_id\": 1\n}" }
           }
         },
         {

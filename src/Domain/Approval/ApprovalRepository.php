@@ -80,7 +80,7 @@ final class ApprovalRepository
     {
         $stmt = $this->db->pdo()->prepare(
             "SELECT ar.id, ar.code, ar.description, ar.reference, ar.requested_by, ar.status,
-                    ar.created_at, ar.expires_at, ar.responded_at, ar.response_text,
+                    ar.created_at, ar.expires_at, ar.responded_at, ar.response_text, ar.callback_status,
                     t.code AS type_code, t.label AS type_label,
                     m.id AS manager_id, m.name AS manager_name,
                     q.status AS queue_status, o.msg_status AS send_status
@@ -100,9 +100,12 @@ final class ApprovalRepository
     public function expireOverdue(DateTimeImmutable $now): int
     {
         $stmt = $this->db->pdo()->prepare(
-            "UPDATE approval_requests SET status = 'expired' WHERE status = 'pending' AND expires_at <= :now"
+            "UPDATE approval_requests
+                SET status = 'expired',
+                    callback_status = IF(callback_url IS NULL, 'none', 'pending'), callback_next_at = :cb_now
+              WHERE status = 'pending' AND expires_at <= :now"
         );
-        $stmt->execute(['now' => $now->format(self::DATE)]);
+        $stmt->execute(['now' => $now->format(self::DATE), 'cb_now' => $now->format(self::DATE)]);
 
         return $stmt->rowCount();
     }
@@ -152,18 +155,67 @@ final class ApprovalRepository
     {
         $stmt = $this->db->pdo()->prepare(
             "UPDATE approval_requests
-                SET status = :status, responded_at = :now, response_text = :text, response_sms_id = :sms
+                SET status = :status, responded_at = :now, response_text = :text, response_sms_id = :sms,
+                    callback_status = IF(callback_url IS NULL, 'none', 'pending'), callback_next_at = :cb_now
               WHERE id = :id AND status = 'pending'"
         );
         $stmt->execute([
             'status' => $status->value,
             'now'    => $now->format(self::DATE),
+            'cb_now' => $now->format(self::DATE),
             'text'   => $text,
             'sms'    => $smsId,
             'id'     => $id,
         ]);
 
         return $stmt->rowCount() === 1;
+    }
+
+    /**
+     * Callbacks por enviar: pedidos decididos, com callback_url, cuja próxima tentativa já chegou.
+     *
+     * @return list<array{id:int,callback_url:string,api_client:?string,callback_attempts:int}>
+     */
+    public function findDueCallbacks(DateTimeImmutable $now, int $limit): array
+    {
+        $limit = max(1, $limit);   // inteiro: seguro de inserir no SQL
+        $stmt = $this->db->pdo()->prepare(
+            "SELECT id, callback_url, api_client, callback_attempts FROM approval_requests
+              WHERE callback_status = 'pending' AND callback_next_at <= :now
+              ORDER BY callback_next_at, id
+              LIMIT {$limit}"
+        );
+        $stmt->execute(['now' => $now->format(self::DATE)]);
+
+        return array_map(static fn (array $r): array => [
+            'id'                => (int) $r['id'],
+            'callback_url'      => (string) $r['callback_url'],
+            'api_client'        => $r['api_client'],
+            'callback_attempts' => (int) $r['callback_attempts'],
+        ], $stmt->fetchAll());
+    }
+
+    /**
+     * Regista o resultado de uma tentativa de callback.
+     *
+     * @param string $status 'sent' (entregue), 'pending' (volta a tentar em $nextAt) ou 'failed' (desistiu)
+     */
+    public function recordCallback(int $id, string $status, int $attempts, ?DateTimeImmutable $nextAt, ?string $error, DateTimeImmutable $now): void
+    {
+        $stmt = $this->db->pdo()->prepare(
+            "UPDATE approval_requests
+                SET callback_status = :status, callback_attempts = :attempts, callback_next_at = :next,
+                    callback_sent_at = :sent, callback_error = :error
+              WHERE id = :id"
+        );
+        $stmt->execute([
+            'status'   => $status,
+            'attempts' => $attempts,
+            'next'     => $nextAt?->format(self::DATE),
+            'sent'     => $status === 'sent' ? $now->format(self::DATE) : null,
+            'error'    => $error === null ? null : mb_substr($error, 0, 255),
+            'id'       => $id,
+        ]);
     }
 
     /**

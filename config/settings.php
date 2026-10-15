@@ -75,6 +75,20 @@ return [
         'inbox_batch'    => max(1, (int) $env('APPROVAL_INBOX_BATCH', 50)),
     ],
 
+    // Callbacks: avisar a APP (POST ao callback_url) quando um pedido é decidido
+    'callbacks' => [
+        'interval_seconds' => max(1, (int) $env('CALLBACK_INTERVAL_SECONDS', 5)),
+        'batch_size'       => max(1, (int) $env('CALLBACK_BATCH_SIZE', 5)),
+        'timeout_seconds'  => max(1, (int) $env('CALLBACK_TIMEOUT_SECONDS', 5)),
+        // Esperas entre tentativas, em minutos. A 1.ª tentativa é logo; depois uma por cada valor desta lista.
+        'retry_minutes'    => array_values(array_filter(array_map(
+            static fn (string $m): int => (int) $m,
+            array_filter(array_map('trim', explode(',', (string) $env('CALLBACK_RETRY_MINUTES', '1,2,5,10,20,30'))), 'strlen')
+        ), static fn (int $m): bool => $m > 0)),
+        // false = só https e só endereços públicos (protege a rede interna). true = também http e redes internas.
+        'allow_internal'   => $bool('CALLBACK_ALLOW_INTERNAL', false),
+    ],
+
     // Comum a todos os workers
     'worker' => [
         'max_consecutive_errors' => max(1, (int) $env('WORKER_MAX_CONSECUTIVE_ERRORS', 10)),

@@ -4,6 +4,7 @@ rem  Instala os 2 workers como servicos do Windows (via NSSM), para
 rem  arrancarem sozinhos com o PC e reiniciarem se falharem:
 rem    sms-dispatcher   ->  php bin\dispatcher.php   (sms_queue -> sms_out)
 rem    sms-approvals    ->  php bin\approvals.php    (le o sms_in, trata as respostas)
+rem    sms-callbacks    ->  php bin\callbacks.php    (avisa as APPs quando um pedido e decidido)
 rem
 rem  Requisitos:
 rem    * correr como ADMINISTRADOR (botao direito -> Executar como administrador)
@@ -49,11 +50,13 @@ if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
 
 call :install sms-dispatcher "bin\dispatcher.php" "Passa os SMS de sms_queue para sms_out"
 call :install sms-approvals  "bin\approvals.php"  "Le as respostas dos gestores e trata os pedidos de aprovacao"
+call :install sms-callbacks  "bin\callbacks.php"  "Avisa as APPs (callback) quando um pedido de aprovacao e decidido"
 
 echo.
 echo Servicos instalados e iniciados. Estado:
 sc query sms-dispatcher | findstr /i "STATE"
 sc query sms-approvals  | findstr /i "STATE"
+sc query sms-callbacks  | findstr /i "STATE"
 echo.
 echo Logs dos servicos: %ROOT%\logs\  (e a aplicacao regista em logs\app-AAAA-MM-DD.log)
 endlocal

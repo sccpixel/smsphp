@@ -43,20 +43,6 @@ final class ManagerRepository
     }
 
     /**
-     * Gestor ativo marcado como por defeito (is_default = 1), usado quando a APP não indica um.
-     *
-     * @return array{id:int,name:string,phone_number:string}|null
-     */
-    public function findDefault(): ?array
-    {
-        $row = $this->db->pdo()
-            ->query('SELECT id, name, phone_number FROM managers WHERE is_default = 1 AND active = 1 ORDER BY id LIMIT 1')
-            ->fetch();
-
-        return $this->normalize($row ?: null);
-    }
-
-    /**
      * Gestores ativos, sem o número de telefone (a API nunca o expõe).
      *
      * @return list<array{id:int,name:string,is_default:bool}>

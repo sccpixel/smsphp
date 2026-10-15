@@ -9,6 +9,9 @@
 declare(strict_types=1);
 
 use App\Database\Connection;
+use App\Domain\Callback\CallbackSchedule;
+use App\Domain\Callback\CallbackSender;
+use App\Domain\Callback\CallbackUrlPolicy;
 use App\Handler\JsonErrorHandler;
 use App\Support\Clock;
 use App\Support\Settings;
@@ -40,6 +43,17 @@ return [
         $c->get(Settings::class)->get('app.debug'),
     ),
     ResponseFactoryInterface::class => fn () => new ResponseFactory(),
+
+    // Callbacks: para onde se pode enviar, quanto se espera e quando se repete
+    CallbackUrlPolicy::class => fn (ContainerInterface $c) => new CallbackUrlPolicy(
+        $c->get(Settings::class)->get('callbacks.allow_internal'),
+    ),
+    CallbackSender::class => fn (ContainerInterface $c) => new CallbackSender(
+        $c->get(Settings::class)->get('callbacks.timeout_seconds'),
+    ),
+    CallbackSchedule::class => fn (ContainerInterface $c) => new CallbackSchedule(
+        $c->get(Settings::class)->get('callbacks.retry_minutes'),
+    ),
 
     // Logs: um ficheiro por dia em logs/, guardados 14 dias
     LoggerInterface::class => function (ContainerInterface $c) {

@@ -11,7 +11,12 @@ CREATE TABLE IF NOT EXISTS approval_requests (
     reference         VARCHAR(100) NULL,                 -- id interno na APP
     requested_by      VARCHAR(100) NULL,                 -- operador que pediu
     status            VARCHAR(20)  NOT NULL DEFAULT 'pending',
-    callback_url      VARCHAR(255) NULL,                 -- guardado, ainda não usado (futuro)
+    callback_url      VARCHAR(255) NULL,                 -- a APP é avisada aqui quando o pedido é decidido
+    callback_status   VARCHAR(10)  NOT NULL DEFAULT 'none',  -- none | pending | sent | failed
+    callback_attempts INT          NOT NULL DEFAULT 0,
+    callback_next_at  DATETIME     NULL,                 -- quando fazer a próxima tentativa
+    callback_sent_at  DATETIME     NULL,
+    callback_error    VARCHAR(255) NULL,                 -- motivo da última tentativa falhada
     created_at        DATETIME     NOT NULL,
     expires_at        DATETIME     NOT NULL,
     responded_at      DATETIME     NULL,
@@ -23,6 +28,7 @@ CREATE TABLE IF NOT EXISTS approval_requests (
     KEY idx_manager_status (manager_id, status),
     KEY idx_code_status (code, status),
     KEY idx_status_expires (status, expires_at),
+    KEY idx_callback (callback_status, callback_next_at),
     CONSTRAINT fk_ar_type    FOREIGN KEY (approval_type_id) REFERENCES approval_types (id),
     CONSTRAINT fk_ar_manager FOREIGN KEY (manager_id)       REFERENCES managers (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

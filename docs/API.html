@@ -110,7 +110,7 @@ footer { margin-top: 4rem; padding-top: 1.2rem; border-top: 1px solid var(--line
   <p>API REST em JSON para <strong>enviar SMS</strong> e <strong>pedir aprovações a gestores por SMS</strong> (descontos, movimentos de armazém, etc.). Destinada a quem desenvolve APPs que a utilizam.</p>
 </header>
 <div class="layout">
-  <nav class="toc" aria-label="Índice"><details open><summary>Índice</summary><ul><li class="l2"><a href="#1-conceitos">1. Conceitos</a></li><li class="l2"><a href="#2-começar">2. Começar</a></li><li class="l3"><a href="#url-base">URL base</a></li><li class="l3"><a href="#autenticação">Autenticação</a></li><li class="l3"><a href="#formato-dos-pedidos">Formato dos pedidos</a></li><li class="l3"><a href="#números-de-telefone">Números de telefone</a></li><li class="l3"><a href="#verificar-que-está-tudo-vivo">Verificar que está tudo vivo</a></li><li class="l2"><a href="#3-mensagens-sms">3. Mensagens (SMS)</a></li><li class="l3"><a href="#criar-uma-mensagem">Criar uma mensagem</a></li><li class="l3"><a href="#criar-várias-mensagens-lote">Criar várias mensagens (lote)</a></li><li class="l3"><a href="#consultar-uma-mensagem">Consultar uma mensagem</a></li><li class="l2"><a href="#4-aprovações">4. Aprovações</a></li><li class="l3"><a href="#estados-de-um-pedido">Estados de um pedido</a></li><li class="l3"><a href="#criar-um-pedido">Criar um pedido</a></li><li class="l3"><a href="#consultar-um-pedido">Consultar um pedido</a></li><li class="l3"><a href="#saber-o-resultado">Saber o resultado</a></li><li class="l3"><a href="#cancelar-um-pedido">Cancelar um pedido</a></li><li class="l3"><a href="#o-que-o-gestor-pode-responder">O que o gestor pode responder</a></li><li class="l2"><a href="#5-gestores-e-tipos-de-pedido">5. Gestores e tipos de pedido</a></li><li class="l3"><a href="#gestores">Gestores</a></li><li class="l3"><a href="#tipos-de-pedido">Tipos de pedido</a></li><li class="l2"><a href="#6-erros">6. Erros</a></li><li class="l2"><a href="#7-exemplos-de-integração">7. Exemplos de integração</a></li><li class="l3"><a href="#curl-windows-cmd">curl (Windows <code>cmd</code>)</a></li><li class="l3"><a href="#php">PHP</a></li><li class="l3"><a href="#javascript-no-servidor-node-18">JavaScript (no servidor, Node 18+)</a></li><li class="l2"><a href="#8-boas-práticas">8. Boas práticas</a></li></ul></details></nav>
+  <nav class="toc" aria-label="Índice"><details open><summary>Índice</summary><ul><li class="l2"><a href="#1-conceitos">1. Conceitos</a></li><li class="l2"><a href="#2-começar">2. Começar</a></li><li class="l3"><a href="#url-base">URL base</a></li><li class="l3"><a href="#autenticação">Autenticação</a></li><li class="l3"><a href="#formato-dos-pedidos">Formato dos pedidos</a></li><li class="l3"><a href="#números-de-telefone">Números de telefone</a></li><li class="l3"><a href="#verificar-que-está-tudo-vivo">Verificar que está tudo vivo</a></li><li class="l2"><a href="#3-mensagens-sms">3. Mensagens (SMS)</a></li><li class="l3"><a href="#criar-uma-mensagem">Criar uma mensagem</a></li><li class="l3"><a href="#criar-várias-mensagens-lote">Criar várias mensagens (lote)</a></li><li class="l3"><a href="#consultar-uma-mensagem">Consultar uma mensagem</a></li><li class="l2"><a href="#4-aprovações">4. Aprovações</a></li><li class="l3"><a href="#estados-de-um-pedido">Estados de um pedido</a></li><li class="l3"><a href="#criar-um-pedido">Criar um pedido</a></li><li class="l3"><a href="#consultar-um-pedido">Consultar um pedido</a></li><li class="l3"><a href="#saber-o-resultado">Saber o resultado</a></li><li class="l3"><a href="#avisos-automáticos-callback">Avisos automáticos (callback)</a></li><li class="l3"><a href="#cancelar-um-pedido">Cancelar um pedido</a></li><li class="l3"><a href="#o-que-o-gestor-pode-responder">O que o gestor pode responder</a></li><li class="l2"><a href="#5-gestores-e-tipos-de-pedido">5. Gestores e tipos de pedido</a></li><li class="l3"><a href="#gestores">Gestores</a></li><li class="l3"><a href="#tipos-de-pedido">Tipos de pedido</a></li><li class="l2"><a href="#6-erros">6. Erros</a></li><li class="l2"><a href="#7-exemplos-de-integração">7. Exemplos de integração</a></li><li class="l3"><a href="#curl-windows-cmd">curl (Windows <code>cmd</code>)</a></li><li class="l3"><a href="#php">PHP</a></li><li class="l3"><a href="#javascript-no-servidor-node-18">JavaScript (no servidor, Node 18+)</a></li><li class="l2"><a href="#8-boas-práticas">8. Boas práticas</a></li></ul></details></nav>
   <main>
 <h2 id="1-conceitos"><a class="anchor" href="#1-conceitos" aria-label="Ligação para esta secção">#</a>1. Conceitos</h2>
 <p><strong>A API não envia o SMS na hora.</strong> Valida o pedido, guarda-o numa fila e responde logo (<code>201</code>). Um processo à parte passa a mensagem ao programa de SMS, que a envia pelo modem. Por isso, o <code>201</code> quer dizer "recebido e na fila", não "entregue". Para saber o que aconteceu a seguir, consulta o estado (<code>GET</code>).</p>
@@ -182,7 +182,7 @@ APP ◀── {"status":"approved", ...} ◀────────────
 <p>Só se sai de <code>pending</code>; os restantes são finais.</p>
 <h3 id="criar-um-pedido"><a class="anchor" href="#criar-um-pedido" aria-label="Ligação para esta secção">#</a>Criar um pedido</h3>
 <div class="endpoint"><span class="method post">POST</span><code>/api/approvals</code></div>
-<div class="table-wrap"><table><thead><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th><th>Regras</th></tr></thead><tbody><tr><td><code>type</code></td><td>texto</td><td>sim</td><td>código de um tipo ativo (ver <a href="#tipos-de-pedido">tipos</a>), ex.: <code>discount</code>, <code>stock_move</code></td></tr><tr><td><code>description</code></td><td>texto</td><td>sim</td><td>1 a 120 caracteres; é o que o gestor lê no SMS</td></tr><tr><td><code>reference</code></td><td>texto</td><td>não</td><td>até 100 caracteres; o identificador do pedido na vossa APP (ex.: <code>VENDA-1234</code>)</td></tr><tr><td><code>requested_by</code></td><td>texto</td><td>não</td><td>até 100 caracteres; quem pediu (ex.: o operador)</td></tr><tr><td><code>manager_id</code></td><td>inteiro</td><td>não</td><td>gestor que decide (ver <a href="#gestores">gestores</a>). Se faltar, usa o gestor por defeito</td></tr><tr><td><code>callback_url</code></td><td>URL</td><td>não</td><td>até 255 caracteres. <strong>Guardado, mas ainda não usado</strong>: por agora a APP tem de consultar (ver abaixo)</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th><th>Regras</th></tr></thead><tbody><tr><td><code>type</code></td><td>texto</td><td>sim</td><td>código de um tipo ativo (ver <a href="#tipos-de-pedido">tipos</a>), ex.: <code>discount</code>, <code>stock_move</code></td></tr><tr><td><code>description</code></td><td>texto</td><td>sim</td><td>1 a 120 caracteres; é o que o gestor lê no SMS</td></tr><tr><td><code>reference</code></td><td>texto</td><td>não</td><td>até 100 caracteres; o identificador do pedido na vossa APP (ex.: <code>VENDA-1234</code>)</td></tr><tr><td><code>requested_by</code></td><td>texto</td><td>não</td><td>até 100 caracteres; quem pediu (ex.: o operador)</td></tr><tr><td><code>manager_id</code></td><td>inteiro</td><td><strong>sim</strong></td><td>id do gestor que decide, obtido em <a href="#gestores">GET /api/managers</a>. Tem de existir e estar ativo. <strong>Não há gestor por defeito</strong>: a API serve várias aplicações e cada pedido diz sempre a quem vai</td></tr><tr><td><code>callback_url</code></td><td>URL</td><td>não</td><td>até 255 caracteres. Endereço da APP que o gateway avisa (<code>POST</code>) quando o pedido é aprovado, rejeitado ou expira. Tem de ser <code>https://</code> e <strong>público</strong> (ver <a href="#avisos-automáticos-callback">Avisos automáticos</a>)</td></tr></tbody></table></div>
 <figure class="code"><figcaption><span>JSON</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>{
   <span class="tk-key">"type"</span>: <span class="tk-str">"discount"</span>,
   <span class="tk-key">"description"</span>: <span class="tk-str">"15% na venda 1234, cliente Silva"</span>,
@@ -212,13 +212,80 @@ APP ◀── {"status":"approved", ...} ◀────────────
   <span class="tk-key">"expires_at"</span>: <span class="tk-str">"2026-10-15T10:10:00"</span>,
   <span class="tk-key">"responded_at"</span>: <span class="tk-str">"2026-10-15T10:02:31"</span>,
   <span class="tk-key">"response_text"</span>: <span class="tk-str">"SIM 4821"</span>,
-  <span class="tk-key">"sms_status"</span>: <span class="tk-str">"sent"</span>
+  <span class="tk-key">"sms_status"</span>: <span class="tk-str">"sent"</span>,
+  <span class="tk-key">"callback_status"</span>: <span class="tk-str">"sent"</span>
 }</code></pre></figure>
-<div class="table-wrap"><table><thead><tr><th>Campo</th><th>Significado</th></tr></thead><tbody><tr><td><code>status</code></td><td>Ver tabela de estados. Se o prazo já passou e ninguém respondeu, vem logo <code>expired</code></td></tr><tr><td><code>responded_at</code>, <code>response_text</code></td><td>Quando e o que o gestor respondeu (<code>null</code> se ainda não respondeu)</td></tr><tr><td><code>sms_status</code></td><td>Estado do <strong>SMS enviado ao gestor</strong>: <code>pending</code> — ainda não saiu · <code>sent</code> — enviado · <code>failed</code> — <strong>nunca chegou ao gestor</strong></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Campo</th><th>Significado</th></tr></thead><tbody><tr><td><code>status</code></td><td>Ver tabela de estados. Se o prazo já passou e ninguém respondeu, vem logo <code>expired</code></td></tr><tr><td><code>responded_at</code>, <code>response_text</code></td><td>Quando e o que o gestor respondeu (<code>null</code> se ainda não respondeu)</td></tr><tr><td><code>sms_status</code></td><td>Estado do <strong>SMS enviado ao gestor</strong>: <code>pending</code> — ainda não saiu · <code>sent</code> — enviado · <code>failed</code> — <strong>nunca chegou ao gestor</strong></td></tr><tr><td><code>callback_status</code></td><td>Estado do <strong>aviso à tua APP</strong>: <code>none</code> — o pedido não tem <code>callback_url</code> (ou ainda não foi decidido) · <code>pending</code> — à espera de ser enviado ou de nova tentativa · <code>sent</code> — a APP respondeu 2xx · <code>failed</code> — o gateway desistiu (a APP continua a poder consultar o pedido)</td></tr></tbody></table></div>
 <p><strong>Importante:</strong> se <code>sms_status</code> for <code>failed</code>, o gestor nunca viu o pedido. O <code>status</code> continua <code>pending</code> até expirar, por isso a APP deve tratar este caso (avisar o operador, cancelar e tentar de novo, escolher outro gestor).</p>
 <p>Dá <code>404</code> se o <code>id</code> não existir.</p>
 <h3 id="saber-o-resultado"><a class="anchor" href="#saber-o-resultado" aria-label="Ligação para esta secção">#</a>Saber o resultado</h3>
-<p>A APP <strong>consulta</strong> <code>GET /api/approvals/{id}</code> de <strong>3 em 3 segundos</strong> (não menos), até o <code>status</code> deixar de ser <code>pending</code>, ou até o utilizador desistir.</p>
+<p>Há duas formas, que podem ser usadas em conjunto:</p>
+<ol><li><strong>Consultar</strong>: a APP chama <code>GET /api/approvals/{id}</code> de <strong>3 em 3 segundos</strong> (não menos), até o <code>status</code></li></ol>
+<p>deixar de ser <code>pending</code>, ou até o utilizador desistir. Funciona sempre, em qualquer APP.</p>
+<ol><li><strong>Ser avisada</strong> (callback): se o pedido tiver <code>callback_url</code>, o gateway chama esse endereço assim que o</li></ol>
+<p>pedido é decidido. Evita consultas constantes. Ver a secção seguinte.</p>
+<h3 id="avisos-automáticos-callback"><a class="anchor" href="#avisos-automáticos-callback" aria-label="Ligação para esta secção">#</a>Avisos automáticos (callback)</h3>
+<p>Ao criar o pedido, indica o <code>callback_url</code> (<code>https://</code>, público). Quando o pedido passa a <strong><code>approved</code></strong>, <strong><code>rejected</code></strong> ou <strong><code>expired</code></strong>, o gateway faz um <code>POST</code> a esse endereço. Um cancelamento <strong>não</strong> gera aviso (foi a própria APP que o pediu).</p>
+<p><strong>O que a APP recebe</strong></p>
+<figure class="code"><figcaption><span></span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>POST /o/teu/endereco
+Content-Type: application/json; charset=utf-8
+X-Gateway-Event: approval.updated
+X-Gateway-Delivery: 7-1
+X-Gateway-Timestamp: 1760000000
+X-Gateway-Signature: sha256=3a9f...</code></pre></figure>
+<figure class="code"><figcaption><span>JSON</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>{
+  <span class="tk-key">"event"</span>: <span class="tk-str">"approval.updated"</span>,
+  <span class="tk-key">"id"</span>: <span class="tk-num">7</span>,
+  <span class="tk-key">"code"</span>: <span class="tk-str">"4821"</span>,
+  <span class="tk-key">"type"</span>: <span class="tk-str">"discount"</span>,
+  <span class="tk-key">"type_label"</span>: <span class="tk-str">"Desconto"</span>,
+  <span class="tk-key">"description"</span>: <span class="tk-str">"15% na venda 1234, cliente Silva"</span>,
+  <span class="tk-key">"reference"</span>: <span class="tk-str">"VENDA-1234"</span>,
+  <span class="tk-key">"requested_by"</span>: <span class="tk-str">"Operador Ana"</span>,
+  <span class="tk-key">"manager"</span>: { <span class="tk-key">"id"</span>: <span class="tk-num">1</span>, <span class="tk-key">"name"</span>: <span class="tk-str">"João"</span> },
+  <span class="tk-key">"status"</span>: <span class="tk-str">"approved"</span>,
+  <span class="tk-key">"created_at"</span>: <span class="tk-str">"2026-10-15T10:00:00"</span>,
+  <span class="tk-key">"expires_at"</span>: <span class="tk-str">"2026-10-15T10:10:00"</span>,
+  <span class="tk-key">"responded_at"</span>: <span class="tk-str">"2026-10-15T10:02:31"</span>,
+  <span class="tk-key">"response_text"</span>: <span class="tk-str">"SIM 4821"</span>,
+  <span class="tk-key">"sms_status"</span>: <span class="tk-str">"sent"</span>
+}</code></pre></figure>
+<p>O corpo é o mesmo de <code>GET /api/approvals/{id}</code>, mais o campo <code>event</code>. Usa o <code>reference</code> para saber a que operação da tua APP o pedido corresponde.</p>
+<p><strong>O que a APP tem de fazer</strong></p>
+<ul><li><strong>Responder com HTTP 2xx</strong> (por exemplo <code>200</code>), em menos de <strong>5 segundos</strong>. Qualquer outra resposta, ou</li></ul>
+<p>falta de resposta, conta como falha. Os redirecionamentos (<code>301</code>, <code>302</code>...) <strong>não</strong> são seguidos.</p>
+<ul><li><strong>Verificar a assinatura</strong> antes de confiar no conteúdo (qualquer pessoa pode fazer um <code>POST</code> ao teu</li></ul>
+<p>endereço). A assinatura é um HMAC-SHA256 de <code>&lt;timestamp&gt;.&lt;corpo&gt;</code> com <strong>a chave de API da tua APP</strong> como segredo. Usa sempre o corpo <strong>em bruto</strong>, tal como chegou, antes de o converter em JSON. Exemplos abaixo.</p>
+<ul><li><strong>Tratar avisos repetidos</strong>: o gateway garante a entrega "pelo menos uma vez". Se a APP responder tarde e o gateway</li></ul>
+<p>repetir, o mesmo aviso chega duas vezes. Faz o tratamento de forma que receber o mesmo <code>status</code> outra vez não estrague nada (o <code>X-Gateway-Delivery</code> identifica cada tentativa: <code>&lt;id do pedido&gt;-&lt;n.º da tentativa&gt;</code>).</p>
+<p><strong>Exemplo de verificação (PHP)</strong></p>
+<figure class="code"><figcaption><span>PHP</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>$body      = file_get_contents('php://input');                    // o corpo EXATAMENTE como chegou
+$timestamp = $_SERVER['HTTP_X_GATEWAY_TIMESTAMP'] ?? '';
+$received  = $_SERVER['HTTP_X_GATEWAY_SIGNATURE'] ?? '';
+$expected  = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $suaChaveDeApi);
+
+if (!hash_equals($expected, $received) || abs(time() - (int) $timestamp) &gt; 300) {
+    http_response_code(401);   // assinatura errada, ou aviso com mais de 5 minutos
+    exit;
+}
+$pedido = json_decode($body, true);
+// ... atualiza a operação com $pedido['reference'] e $pedido['status'] ...
+http_response_code(200);</code></pre></figure>
+<p><strong>Exemplo de verificação (Node.js)</strong></p>
+<figure class="code"><figcaption><span>JavaScript</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>const crypto = require('crypto');
+
+function assinaturaValida(corpoBruto, timestamp, recebida, chave) {
+  const esperada = 'sha256=' + crypto.createHmac('sha256', chave).update(timestamp + '.' + corpoBruto).digest('hex');
+  const a = Buffer.from(esperada), b = Buffer.from(recebida || '');
+  const fresco = Math.abs(Date.now() / 1000 - Number(timestamp)) &lt;= 300;   // até 5 minutos
+  return fresco &amp;&amp; a.length === b.length &amp;&amp; crypto.timingSafeEqual(a, b);
+}</code></pre></figure>
+<p><strong>Se a APP falhar:</strong> o gateway repete 6 vezes, com esperas de 1, 2, 5, 10, 20 e 30 minutos (7 tentativas em cerca de 1 hora). Se mesmo assim não conseguir, desiste (<code>callback_status: "failed"</code>) e a APP continua a poder consultar o pedido com <code>GET</code>. Por isso, <strong>não dependas só do callback</strong> para pedidos importantes: confirma com um <code>GET</code> se passou muito tempo.</p>
+<p><strong>Regras para o endereço</strong> (recusadas com <code>422</code> ao criar o pedido):</p>
+<ul><li>tem de começar por <code>https://</code>;</li><li>tem de ser <strong>público</strong>: não pode ser <code>localhost</code>, um IP privado (<code>192.168.x.x</code>, <code>10.x.x.x</code>, <code>172.16-31.x.x</code>) nem um</li></ul>
+<p>nome interno (sem ponto, <code>.local</code>, <code>.lan</code>);</p>
+<ul><li>não pode ter utilizador e password no endereço (<code>https://user:pass@...</code>);</li><li>até 255 caracteres.</li></ul>
+<p>Se a tua APP está na rede interna da empresa e não tem um endereço público, o callback não a alcança: fala com o administrador (existe uma opção para aceitar redes internas) ou usa só a consulta (<code>GET</code>).</p>
 <h3 id="cancelar-um-pedido"><a class="anchor" href="#cancelar-um-pedido" aria-label="Ligação para esta secção">#</a>Cancelar um pedido</h3>
 <div class="endpoint"><span class="method post">POST</span><code>/api/approvals/{id}/cancel</code></div>
 <p>Sem corpo. Responde <code>200</code> com o pedido já atualizado (<code>"status": "cancelled"</code>).</p>
@@ -236,7 +303,8 @@ APP ◀── {"status":"approved", ...} ◀────────────
   { <span class="tk-key">"id"</span>: <span class="tk-num">1</span>, <span class="tk-key">"name"</span>: <span class="tk-str">"João"</span>, <span class="tk-key">"is_default"</span>: <span class="tk-lit">true</span> },
   { <span class="tk-key">"id"</span>: <span class="tk-num">2</span>, <span class="tk-key">"name"</span>: <span class="tk-str">"Maria"</span>, <span class="tk-key">"is_default"</span>: <span class="tk-lit">false</span> }
 ]</code></pre></figure>
-<p>Só os ativos. <strong>Não devolve o número de telefone.</strong> <code>is_default</code> indica quem decide quando o pedido não traz <code>manager_id</code>. Se não houver gestor por defeito e a APP não indicar <code>manager_id</code>, o pedido é rejeitado com <code>422</code>.</p>
+<p>Só os ativos. <strong>Não devolve o número de telefone.</strong></p>
+<p>Cada pedido de aprovação tem de indicar o <code>manager_id</code> de um destes gestores (é obrigatório). O campo <code>is_default</code> existe só por compatibilidade e <strong>não tem efeito nos pedidos</strong>: ignora-o.</p>
 <h3 id="tipos-de-pedido"><a class="anchor" href="#tipos-de-pedido" aria-label="Ligação para esta secção">#</a>Tipos de pedido</h3>
 <div class="endpoint"><span class="method get">GET</span><code>/api/approval-types</code></div>
 <figure class="code"><figcaption><span>JSON</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>[
@@ -250,7 +318,7 @@ APP ◀── {"status":"approved", ...} ◀────────────
 <p><code>details</code> só existe nos erros de validação (<code>422</code>) e tem uma entrada por campo inválido.</p>
 <div class="table-wrap"><table><thead><tr><th>Código</th><th>Quando</th><th><code>error</code></th></tr></thead><tbody><tr><td><code>200</code></td><td>Consulta ou cancelamento com sucesso</td><td>—</td></tr><tr><td><code>201</code></td><td>Criado (mensagem, lote, pedido)</td><td>—</td></tr><tr><td><code>401</code></td><td>Falta a chave ou é inválida</td><td><code>Chave de API inválida ou em falta</code></td></tr><tr><td><code>403</code></td><td>O IP não está autorizado</td><td><code>IP não autorizado</code></td></tr><tr><td><code>404</code></td><td>Rota ou recurso inexistente</td><td><code>Não encontrado</code>, <code>Mensagem não encontrada</code>, <code>Pedido não encontrado</code></td></tr><tr><td><code>405</code></td><td>Método HTTP errado para a rota</td><td><code>Método não permitido</code></td></tr><tr><td><code>409</code></td><td>Cancelar um pedido que já não está pendente</td><td><code>O pedido já não está pendente (estado: ...)</code></td></tr><tr><td><code>422</code></td><td>Dados inválidos (ver <code>details</code>)</td><td><code>Dados inválidos</code></td></tr><tr><td><code>500</code></td><td>Erro interno</td><td><code>Erro interno</code></td></tr><tr><td><code>503</code></td><td>A API não está configurada, ou <code>/health</code> sem base de dados</td><td><code>API sem chaves configuradas</code></td></tr></tbody></table></div>
 <p><strong>Mensagens de validação comuns (<code>details</code>):</strong></p>
-<div class="table-wrap"><table><thead><tr><th>Mensagem</th><th>Quando</th></tr></thead><tbody><tr><td><code>Campo obrigatório</code></td><td>falta o campo ou está vazio</td></tr><tr><td><code>Máximo N caracteres</code></td><td>texto demasiado longo</td></tr><tr><td><code>Tem de ser texto</code> / <code>Tem de ser um número inteiro</code></td><td>tipo errado</td></tr><tr><td><code>Número de telefone inválido</code></td><td><code>to</code> não é um número português válido</td></tr><tr><td><code>URL inválido</code></td><td><code>callback_url</code> não é <code>http(s)://...</code></td></tr><tr><td><code>Tipo de pedido inexistente ou inativo</code></td><td><code>type</code> desconhecido</td></tr><tr><td><code>Gestor inexistente ou inativo</code></td><td><code>manager_id</code> não existe ou está inativo</td></tr><tr><td><code>Não há gestor por defeito: indique o manager_id</code></td><td>falta <code>manager_id</code> e não há gestor por defeito</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Mensagem</th><th>Quando</th></tr></thead><tbody><tr><td><code>Campo obrigatório</code></td><td>falta o campo ou está vazio</td></tr><tr><td><code>Máximo N caracteres</code></td><td>texto demasiado longo</td></tr><tr><td><code>Tem de ser texto</code> / <code>Tem de ser um número inteiro</code></td><td>tipo errado</td></tr><tr><td><code>Número de telefone inválido</code></td><td><code>to</code> não é um número português válido</td></tr><tr><td><code>URL inválido</code></td><td><code>callback_url</code> não é um URL</td></tr><tr><td><code>O endereço do callback tem de começar por https://.</code></td><td><code>callback_url</code> sem <code>https</code></td></tr><tr><td><code>O endereço do callback tem de ser público (...)</code></td><td><code>callback_url</code> aponta para <code>localhost</code> ou uma rede interna</td></tr><tr><td><code>Tipo de pedido inexistente ou inativo</code></td><td><code>type</code> desconhecido</td></tr><tr><td><code>Gestor inexistente ou inativo</code></td><td><code>manager_id</code> não existe ou está inativo</td></tr></tbody></table></div>
 <p>Um <code>5xx</code> é um problema do servidor, não do pedido: tenta mais tarde e, se persistir, avisa o administrador.</p>
 <h2 id="7-exemplos-de-integração"><a class="anchor" href="#7-exemplos-de-integração" aria-label="Ligação para esta secção">#</a>7. Exemplos de integração</h2>
 <h3 id="curl-windows-cmd"><a class="anchor" href="#curl-windows-cmd" aria-label="Ligação para esta secção">#</a>curl (Windows <code>cmd</code>)</h3>
@@ -262,7 +330,7 @@ curl.exe -H "X-API-Key: &lt;chave&gt;" https://&lt;dominio&gt;/api/messages/15
 
 curl.exe -X POST https://&lt;dominio&gt;/api/approvals ^
   -H "X-API-Key: &lt;chave&gt;" -H "Content-Type: application/json" ^
-  -d "{\"type\":\"discount\",\"description\":\"15%% na venda 1234\",\"reference\":\"VENDA-1234\"}"</code></pre></figure>
+  -d "{\"type\":\"discount\",\"description\":\"15%% na venda 1234\",\"reference\":\"VENDA-1234\",\"manager_id\":1}"</code></pre></figure>
 <aside class="note">No <code>cmd</code>, o <code>%</code> escreve-se <code>%%</code> quando está dentro de um ficheiro <code>.bat</code>; na linha de comandos escreve-se <code>%</code>.</aside>
 <h3 id="php"><a class="anchor" href="#php" aria-label="Ligação para esta secção">#</a>PHP</h3>
 <figure class="code"><figcaption><span>PHP</span><button type="button" class="copy" aria-label="Copiar">Copiar</button></figcaption><pre><code>&lt;?php
@@ -295,6 +363,7 @@ $r = api('POST', '/api/approvals', [
     'type'        =&gt; 'discount',
     'description' =&gt; '15% na venda 1234, cliente Silva',
     'reference'   =&gt; 'VENDA-1234',
+    'manager_id'  =&gt; 1,          // obrigatório: o gestor que decide (de GET /api/managers)
 ]);
 if ($r['status'] !== 201) {
     exit('Erro: ' . json_encode($r['data']));
