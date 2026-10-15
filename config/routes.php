@@ -5,6 +5,8 @@
 declare(strict_types=1);
 
 use App\Action\HealthAction;
+use App\Action\ApprovalType\ListApprovalTypesAction;
+use App\Action\Manager\ListManagersAction;
 use App\Action\Message\CreateMessageAction;
 use App\Action\Message\CreateMessageBatchAction;
 use App\Action\Message\GetMessageAction;
@@ -22,7 +24,9 @@ return function (App $app): void {
         $api->post('/messages/batch', CreateMessageBatchAction::class);
         $api->get('/messages/{id:[0-9]+}', GetMessageAction::class);
 
-        // Fase 5: /api/managers, /api/approval-types
+        $api->get('/managers', ListManagersAction::class);
+        $api->get('/approval-types', ListApprovalTypesAction::class);
+
         // Fase 6: /api/approvals
     })->add(ApiAuthMiddleware::class);
 };

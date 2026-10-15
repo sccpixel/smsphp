@@ -1,0 +1,26 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Domain\ApprovalType;
+
+use App\Database\Connection;
+
+/** Todo o SQL da tabela approval_types. */
+final class ApprovalTypeRepository
+{
+    public function __construct(private readonly Connection $db)
+    {
+    }
+
+    /**
+     * Tipos de pedido ativos.
+     *
+     * @return list<array{code:string,label:string}>
+     */
+    public function listActive(): array
+    {
+        return $this->db->pdo()
+            ->query('SELECT code, label FROM approval_types WHERE active = 1 ORDER BY id')
+            ->fetchAll();
+    }
+}
