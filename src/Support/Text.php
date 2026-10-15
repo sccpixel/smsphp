@@ -37,10 +37,16 @@ final class Text
      */
     public static function toGsm(string $text): string
     {
-        $text = strtr($text, self::ACCENTS);
+        $text = self::stripAccents($text);
         $text = preg_replace('/[^A-Za-z0-9 .,:;!?()%&@#*=+\/_\'"-]+/u', ' ', $text) ?? '';
 
         return trim(preg_replace('/\s+/', ' ', $text) ?? '');
+    }
+
+    /** Só tira os acentos (ã -> a, Ç -> C); o resto do texto fica como está. */
+    public static function stripAccents(string $text): string
+    {
+        return strtr($text, self::ACCENTS);
     }
 
     /** Corta para $max caracteres (sem deixar um espaço no fim). */

@@ -11,10 +11,12 @@ use App\Domain\Sms\SmsQueueRepository;
 use App\Exception\ConflictException;
 use App\Exception\NotFoundException;
 use App\Support\Clock;
+use App\Support\Phone;
 use App\Support\Settings;
 use App\Support\Text;
 use App\Support\Validator;
 use DateTimeImmutable;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 /** Regras de negócio dos pedidos de aprovação (criar, consultar, cancelar). */
@@ -33,6 +35,8 @@ final class ApprovalService
         private readonly Connection $db,
         private readonly Clock $clock,
         private readonly Settings $settings,
+        private readonly ReplyParser $parser,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -172,6 +176,74 @@ final class ApprovalService
         }
 
         return $this->get($id);
+    }
+
+    /** Passa a "expired" os pendentes cujo prazo acabou. Devolve quantos. */
+    public function expireOverdue(): int
+    {
+        return $this->approvals->expireOverdue($this->clock->now());
+    }
+
+    /**
+     * Trata um SMS recebido (linha do sms_in). Tem de ser chamado dentro de uma transação:
+     * a resposta ao pedido e o SMS de feedback gravam-se juntos, ou não se grava nada.
+     *
+     *  - número que não é de um gestor ativo -> ignora, sem responder
+     *  - texto que não é "SIM 1234" / "NAO 1234" -> ignora, sem responder
+     *  - código de um pedido pendente -> aprova/rejeita e confirma ao gestor
+     *  - código de um pedido já fechado ou inexistente -> avisa o gestor
+     *
+     * @param array{id:int,sms_text:string,sender_number:string} $sms
+     */
+    public function handleReply(array $sms): void
+    {
+        $manager = $this->managers->findActiveByPhoneKey(Phone::key($sms['sender_number']));
+        if ($manager === null) {
+            $this->logger->info('SMS recebido de número que não é gestor: ignorado', ['sms_id' => $sms['id']]);
+            return;
+        }
+
+        $reply = $this->parser->parse($sms['sms_text']);
+        if ($reply === null) {
+            $this->logger->info('SMS do gestor não reconhecido: ignorado', ['sms_id' => $sms['id'], 'manager' => $manager['id']]);
+            return;
+        }
+
+        $now = $this->clock->now();
+        $open = $this->approvals->findOpenByCode($manager['id'], $reply->code, $now);
+
+        if ($open !== null) {
+            $status = $reply->approve ? ApprovalStatus::Approved : ApprovalStatus::Rejected;
+            $text = mb_substr(trim($sms['sms_text']), 0, 255);
+
+            if ($this->approvals->respond($open['id'], $status, $now, $text, $sms['id'])) {
+                $this->logger->info('Pedido respondido', ['approval' => $open['id'], 'status' => $status->value]);
+                $this->feedback($manager['phone_number'], "Pedido {$reply->code} {$status->labelPt()}.", $now);
+                return;
+            }
+            // Deixou de estar pendente entretanto (ex.: a APP cancelou): cai no aviso abaixo
+        }
+
+        $latest = $this->approvals->findLatestByCode($manager['id'], $reply->code);
+        if ($latest === null) {
+            $this->feedback($manager['phone_number'], "Pedido {$reply->code} nao encontrado.", $now);
+            return;
+        }
+
+        $state = ApprovalStatus::from($latest['status']);
+        if ($state === ApprovalStatus::Pending) {
+            $state = ApprovalStatus::Expired;   // pendente na BD mas o prazo já passou
+        }
+        $this->feedback($manager['phone_number'], "Pedido {$reply->code} ja estava {$state->labelPt()}.", $now);
+    }
+
+    /** SMS de resposta ao gestor, para o número guardado em managers (só se APPROVAL_SEND_FEEDBACK=true). */
+    private function feedback(string $phoneNumber, string $text, DateTimeImmutable $now): void
+    {
+        if (!$this->settings->get('approvals.send_feedback', true)) {
+            return;
+        }
+        $this->queue->insert($phoneNumber, $text, null, 'approvals', $now);
     }
 
     /**

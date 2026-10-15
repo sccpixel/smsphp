@@ -28,6 +28,21 @@ final class ManagerRepository
     }
 
     /**
+     * Gestor ativo a quem pertence este número (compara os últimos 9 dígitos, ver Phone::key).
+     *
+     * @return array{id:int,name:string,phone_number:string}|null
+     */
+    public function findActiveByPhoneKey(string $phoneKey): ?array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT id, name, phone_number FROM managers WHERE phone_key = :key AND active = 1'
+        );
+        $stmt->execute(['key' => $phoneKey]);
+
+        return $this->normalize($stmt->fetch() ?: null);
+    }
+
+    /**
      * Gestor ativo marcado como por defeito (is_default = 1), usado quando a APP não indica um.
      *
      * @return array{id:int,name:string,phone_number:string}|null

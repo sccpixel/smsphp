@@ -15,4 +15,16 @@ enum ApprovalStatus: string
     case Rejected = 'rejected';
     case Expired = 'expired';
     case Cancelled = 'cancelled';
+
+    /** Nome do estado em português, sem acentos (usado nos SMS ao gestor). */
+    public function labelPt(): string
+    {
+        return match ($this) {
+            self::Pending   => 'pendente',
+            self::Approved  => 'aprovado',
+            self::Rejected  => 'rejeitado',
+            self::Expired   => 'expirado',
+            self::Cancelled => 'cancelado',
+        };
+    }
 }

@@ -1,0 +1,97 @@
+{
+  "info": {
+    "name": "SMS Gateway",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key", "type": "string" },
+      { "key": "value", "value": "{{api_key}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8080" },
+    { "key": "api_key", "value": "postman-test-key" },
+    { "key": "message_id", "value": "1" },
+    { "key": "approval_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Health (sem chave)",
+      "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/health" }
+    },
+    {
+      "name": "Mensagens",
+      "item": [
+        {
+          "name": "Criar mensagem",
+          "event": [{ "listen": "test", "script": { "exec": ["const j = pm.response.json(); if (j.id) pm.collectionVariables.set('message_id', j.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/messages",
+            "body": { "mode": "raw", "raw": "{\n  \"to\": \"+351 912 345 678\",\n  \"text\": \"Olá, a sua marcação está confirmada.\"\n}" }
+          }
+        },
+        {
+          "name": "Criar mensagens em lote",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/messages/batch",
+            "body": { "mode": "raw", "raw": "{\n  \"messages\": [\n    { \"to\": \"912345678\", \"text\": \"Primeira\" },\n    { \"to\": \"913456789\", \"text\": \"Segunda\" }\n  ]\n}" }
+          }
+        },
+        {
+          "name": "Ver mensagem",
+          "request": { "method": "GET", "url": "{{base_url}}/api/messages/{{message_id}}" }
+        },
+        {
+          "name": "Erro 422 (número e texto inválidos)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/messages",
+            "body": { "mode": "raw", "raw": "{ \"to\": \"abc\", \"text\": \"\" }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gestores e tipos",
+      "item": [
+        { "name": "Listar gestores", "request": { "method": "GET", "url": "{{base_url}}/api/managers" } },
+        { "name": "Listar tipos de pedido", "request": { "method": "GET", "url": "{{base_url}}/api/approval-types" } }
+      ]
+    },
+    {
+      "name": "Aprovações",
+      "item": [
+        {
+          "name": "Criar pedido (gestor por defeito)",
+          "event": [{ "listen": "test", "script": { "exec": ["const j = pm.response.json(); if (j.id) pm.collectionVariables.set('approval_id', j.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/approvals",
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"discount\",\n  \"description\": \"15% na venda 1234, cliente João Silva\",\n  \"reference\": \"VENDA-1234\",\n  \"requested_by\": \"Operador Ana\"\n}" }
+          }
+        },
+        {
+          "name": "Criar pedido (gestor 2)",
+          "event": [{ "listen": "test", "script": { "exec": ["const j = pm.response.json(); if (j.id) pm.collectionVariables.set('approval_id', j.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/approvals",
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"stock_move\",\n  \"description\": \"Transferir 20 un. do armazém 1 para o 2\",\n  \"manager_id\": 2\n}" }
+          }
+        },
+        { "name": "Ver pedido", "request": { "method": "GET", "url": "{{base_url}}/api/approvals/{{approval_id}}" } },
+        { "name": "Cancelar pedido", "request": { "method": "POST", "url": "{{base_url}}/api/approvals/{{approval_id}}/cancel" } }
+      ]
+    }
+  ]
+}

@@ -96,6 +96,76 @@ final class ApprovalRepository
         return $stmt->fetch() ?: null;
     }
 
+    /** Passa a "expired" todos os pendentes cujo prazo acabou. Devolve quantos. */
+    public function expireOverdue(DateTimeImmutable $now): int
+    {
+        $stmt = $this->db->pdo()->prepare(
+            "UPDATE approval_requests SET status = 'expired' WHERE status = 'pending' AND expires_at <= :now"
+        );
+        $stmt->execute(['now' => $now->format(self::DATE)]);
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Pedido pendente (e dentro do prazo) deste gestor com este código.
+     *
+     * @return array{id:int}|null
+     */
+    public function findOpenByCode(int $managerId, string $code, DateTimeImmutable $now): ?array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            "SELECT id FROM approval_requests
+              WHERE manager_id = :manager AND code = :code AND status = 'pending' AND expires_at > :now
+              ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute(['manager' => $managerId, 'code' => $code, 'now' => $now->format(self::DATE)]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : ['id' => (int) $row['id']];
+    }
+
+    /**
+     * Pedido mais recente deste gestor com este código, em qualquer estado
+     * (para dizer ao gestor "já estava aprovado/expirado...").
+     *
+     * @return array{id:int,status:string,expires_at:string}|null
+     */
+    public function findLatestByCode(int $managerId, string $code): ?array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT id, status, expires_at FROM approval_requests
+              WHERE manager_id = :manager AND code = :code
+              ORDER BY id DESC LIMIT 1'
+        );
+        $stmt->execute(['manager' => $managerId, 'code' => $code]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Regista a resposta do gestor, mas só se o pedido ainda estiver pendente.
+     *
+     * @return bool false se entretanto deixou de estar pendente
+     */
+    public function respond(int $id, ApprovalStatus $status, DateTimeImmutable $now, string $text, int $smsId): bool
+    {
+        $stmt = $this->db->pdo()->prepare(
+            "UPDATE approval_requests
+                SET status = :status, responded_at = :now, response_text = :text, response_sms_id = :sms
+              WHERE id = :id AND status = 'pending'"
+        );
+        $stmt->execute([
+            'status' => $status->value,
+            'now'    => $now->format(self::DATE),
+            'text'   => $text,
+            'sms'    => $smsId,
+            'id'     => $id,
+        ]);
+
+        return $stmt->rowCount() === 1;
+    }
+
     /**
      * Cancela, mas só se ainda estiver pendente e dentro do prazo.
      *

@@ -30,7 +30,7 @@ APP ──HTTPS──▶ Cloudflare Tunnel ──▶ Apache :8080 ──▶ Slim
 
 ---
 
-## 2. Estado atual (fases 1 e 2 concluídas)
+## 2. Estado do projeto (fases 1 a 7 concluídas; ver secção 9)
 
 ```
 smsphp/
@@ -491,7 +491,7 @@ Composer, `public/index.php`, `.htaccess`, virtual host na porta 8080.
 
 `config/*`, `Settings`, `Connection`, Monolog, `HealthAction`.
 
-### Fase 3 — Erros, validação e autenticação
+### ✅ Fase 3 — Erros, validação e autenticação
 
 - `src/Exception/*`, `src/Handler/JsonErrorHandler.php` (substitui o handler por defeito em `config/middleware.php`).
 - `src/Support/Phone.php`, `src/Support/Validator.php` (pequeno: `required`, `string`, `maxLength`, `int`, `url`; junta os erros todos e lança `ValidationException`).
@@ -513,7 +513,7 @@ curl.exe "http://127.0.0.1:8080/api/ping?api_key=<chave>"              → 401 (
 curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 em JSON
 ```
 
-### Fase 4 — Envio de SMS
+### ✅ Fase 4 — Envio de SMS
 
 - `sql/01_sms_queue.sql` (`CREATE TABLE IF NOT EXISTS`: não mexe se já existir).
 - `Domain/Sms/*`, `Action/Message/*`, rotas `/api/messages`.
@@ -532,7 +532,7 @@ curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 e
 - Acentos ("Olá, marcação") chegam intactos a `sms_out`.
 - O snippet PHP da integração antiga continua a funcionar sem alterações.
 
-### Fase 5 — Gestores e tipos de pedido
+### ✅ Fase 5 — Gestores e tipos de pedido
 
 - `sql/02_managers_types.sql` (tabelas + seed dos tipos).
 - `Domain/Manager/ManagerRepository`, `Domain/ApprovalType/ApprovalTypeRepository`.
@@ -543,7 +543,7 @@ curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 e
 - Inserir 2 gestores por SQL (um `is_default`, um inativo) → `GET /api/managers` devolve só o ativo, sem o número.
 - `GET /api/approval-types` devolve os dois tipos.
 
-### Fase 6 — Pedidos de aprovação (API)
+### ✅ Fase 6 — Pedidos de aprovação (API)
 
 - `sql/03_approvals.sql` (`approval_requests` + `worker_state`).
 - `Domain/Approval/*` (sem o parser), `Action/Approval/*`, `Support/Text` (`toGsm`), rotas.
@@ -557,10 +557,10 @@ curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 e
 - `POST .../cancel` → 200 `cancelled`; segundo cancel → 409.
 - 50 pedidos seguidos → nenhum código repetido entre os pendentes.
 
-### Fase 7 — Worker de aprovações
+### ✅ Fase 7 — Worker de aprovações
 
 - `Domain/Approval/ReplyParser`, `ParsedReply`; `Domain/Inbox/*`; `Worker/ApprovalWorker`; `bin/approvals.php`.
-- **Perguntar** se queres acrescentar o `phpunit/phpunit` como `require-dev`, para testar o `ReplyParser` e o `Phone`. Se a resposta for não, criar `bin/test-parser.php` com asserts simples.
+- Testes com `phpunit/phpunit` (`require-dev`, aprovado): `tests/` para `ReplyParser`, `Phone` e `Text`; correr com `composer test`.
 
 **Aceitação** (simular respostas com `INSERT INTO sms_in (sms_text, sender_number, sent_dt) VALUES (...)`)
 
@@ -575,7 +575,7 @@ curl.exe -X DELETE http://127.0.0.1:8080/health                        → 405 e
 - Correr o worker duas vezes seguidas → nenhuma resposta processada em duplicado.
 - Parser: `"Sim 4821"`, `" sim 4821 "`, `"NÃO 4821"`, `"nao 4821"` → reconhecidos; `"SIM"`, `"s 4821"`, `"sim 482"`, `"aprovo 4821"` → `null`.
 
-### Fase 8 — Operação
+### Fase 8 — Operação (preparada: README, scripts e SQL feitos; falta instalar no servidor e fazer o teste de reinício)
 
 - `README.md`: instalação no XAMPP, `.env`, ordem dos scripts SQL, virtual host, tunnel, exemplos `curl.exe`.
 - Migração a partir do Python: parar o uvicorn e o dispatcher Python; a `sms_queue` mantém-se; arrancar `bin/dispatcher.php`.
